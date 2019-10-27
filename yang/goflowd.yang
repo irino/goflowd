@@ -1,0 +1,43 @@
+module goflowd {
+  namespace "https://github.com/irino/goflowd";
+  prefix "goflowd";
+  
+  import ietf-ipfix-psamp { prefix ipfix; }
+
+  contact
+    "goflowd https://github.com/irino/goflowd";
+  description
+    "This module contains definitions for goflowd data structures.";
+  revision "2019-09-16" {
+    description
+      "Updated model to augment base ietf-ipfix-psamp modules";
+  }
+
+  augment "/ipfix:ipfix/ipfix:observationPoint" {
+    leaf offlineFile {
+      type string;
+    }
+    leaf promiscuous {
+      type boolean;
+      default false;
+    }
+    leaf pcapgoImplementation {
+      type boolean;
+      default false;
+    }
+    leaf maxObservingPackets {
+      type uint64;
+      default 0;
+    }
+    leaf snapLength {
+      type int32;
+      default 1518;
+    }
+  } 
+  augment "/ipfix:ipfix/ipfix:cache" {
+    leaf mapImplementation {
+      type boolean;
+      default false;
+    }
+  }
+}
