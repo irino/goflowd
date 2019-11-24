@@ -34,10 +34,4 @@ module goflowd {
       default 1518;
     }
   } 
-  augment "/ipfix:ipfix/ipfix:cache" {
-    leaf mapImplementation {
-      type boolean;
-      default false;
-    }
-  }
 }

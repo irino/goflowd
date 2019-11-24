@@ -520,6 +520,7 @@ const ( // goflowd parameters
 	exportBufferSize         = 1472
 	netflow5HeaderSize       = 24
 	netflow5RecordSize       = 48
+	IPFIXHeaderSize          = 16
 	flowKeySize              = 38
 	defaultFlowActiveTimeout = 1800
 	defaultFlowIdleTimeout   = 15
@@ -565,22 +566,39 @@ func fnv32a(b []byte) uint32 {
 type FlowKey struct {
 	sourceIPAddress          net.IP // NetFlow version 1, 5, 7, 8(FullFlow)
 	destinationIPAddress     net.IP // NetFlow version 1, 5, 7, 8(FullFlow)
+	flowLabeIPv6             uint32
+	fragmentIdentification   uint32
 	sourceTransportPort      uint16 // NetFlow version 1, 5, 7, 8(FullFlow)
 	destinationTransportPort uint16 // NetFlow version 1, 5, 7, 8(FullFlow)
 	icmpTypeCode             uint16 // filling DST_PORT field when version is 1, 5, 7, 8
-	protocolIdentifier       uint8  // NetFlow version 1, 5, 7, 8(FullFlow)
-	ipClassOfService         uint8  // NetFlow version 1, 5, 7, 8(FullFlow)
-	flowLabeIPv6             uint32
-	fragmentIdentification   uint32
+	vlanId                   uint16
 	sourceMacAddress         [6]byte
 	destinationMacAddress    [6]byte
-	vlanId                   uint16
+	protocolIdentifier       uint8 // NetFlow version 1, 5, 7, 8(FullFlow)
+	ipClassOfService         uint8 // NetFlow version 1, 5, 7, 8(FullFlow)
 	ipVersion                uint8
 }
 
 // Serialize seriaizes (encodes) to byte array from FlowKey
-func (fk FlowKey) Serialize() [flowKeySize]byte {
-	var buf [flowKeySize]byte
+func (fk FlowKey) Serialize() []byte {
+	buf := make([]byte, 63)
+	copy(buf[0:], fk.sourceIPAddress)
+	copy(buf[16:], fk.destinationIPAddress)
+	binary.BigEndian.PutUint32(buf[32:], fk.flowLabeIPv6)
+	binary.BigEndian.PutUint32(buf[36:], fk.fragmentIdentification)
+	binary.BigEndian.PutUint16(buf[40:], fk.sourceTransportPort)
+	binary.BigEndian.PutUint16(buf[42:], fk.destinationTransportPort)
+	binary.BigEndian.PutUint16(buf[44:], fk.icmpTypeCode)
+	binary.BigEndian.PutUint16(buf[46:], fk.vlanId)
+	copy(buf[48:], fk.sourceMacAddress[0:6])
+	copy(buf[54:], fk.destinationMacAddress[0:6])
+	buf[60] = fk.protocolIdentifier
+	buf[61] = fk.ipClassOfService
+	buf[62] = fk.ipVersion
+	return buf
+}
+func (fk FlowKey) SerializeMin() []byte {
+	buf := make([]byte, binary.Size(fk))
 	copy(buf[0:], fk.sourceIPAddress)
 	copy(buf[16:], fk.destinationIPAddress)
 	binary.BigEndian.PutUint16(buf[32:], fk.sourceTransportPort)
@@ -620,6 +638,119 @@ func (fk FlowKey) String() string {
 		fk.ipClassOfService)
 }
 
+func (f *Flow) SerializeFlowCounter(buf []byte, count uint64, length uint16) {
+	switch length {
+	case 8:
+		binary.BigEndian.PutUint64(buf, count)
+	case 7, 6, 5:
+		var tmpbuf [8]byte
+		binary.BigEndian.PutUint64(tmpbuf[:], count)
+		copy(buf, tmpbuf[8-length:8])
+	case 4:
+		binary.BigEndian.PutUint32(buf, uint32(count))
+	case 3:
+		var tmpbuf [4]byte
+		binary.BigEndian.PutUint32(tmpbuf[:], uint32(count))
+		copy(buf, tmpbuf[1:4])
+	case 2:
+		binary.BigEndian.PutUint16(buf, uint16(count))
+	case 1:
+		buf[0] = uint8(count)
+	}
+}
+
+func (f *Flow) SerializeDataRecord(buf []byte, baseTime time.Time, cache Cache) {
+	usedBufferSize := 0
+	for _, v := range cache.Fields {
+		var key *FlowKey
+		if v.IsFlowKey {
+			key = &(f.key)
+		} else {
+			key = &(f.nonKey)
+		}
+		switch v.IeId {
+		case octetDeltaCount: //1
+			f.SerializeFlowCounter(buf[usedBufferSize:], f.octetDeltaCount, v.IeLength)
+			usedBufferSize += int(v.IeLength)
+		case packetDeltaCount: //2
+			f.SerializeFlowCounter(buf[usedBufferSize:], f.packetDeltaCount, v.IeLength)
+			usedBufferSize += int(v.IeLength)
+		case protocolIdentifier: //4
+			buf[usedBufferSize] = key.protocolIdentifier
+			usedBufferSize += 1
+		case ipClassOfService, postIpClassOfService, ipDiffServCodePoint, ipPrecedence: //5, 55, 195, 196
+			buf[usedBufferSize] = key.ipClassOfService
+			usedBufferSize += 1
+		case tcpControlBits: //6
+			binary.BigEndian.PutUint16(buf[usedBufferSize:], key.sourceTransportPort)
+			usedBufferSize += 2
+		case sourceTransportPort, udpSourcePort, tcpSourcePort: //7, 180, 182
+			binary.BigEndian.PutUint16(buf[usedBufferSize:], key.sourceTransportPort)
+			usedBufferSize += 2
+		case sourceIPv4Address: //8
+			copy(buf[usedBufferSize:], key.sourceIPAddress.To4())
+			usedBufferSize += 4
+		case destinationTransportPort, udpDestinationPort, tcpDestinationPort: //11, 181, 183
+			binary.BigEndian.PutUint16(buf[usedBufferSize:], key.destinationTransportPort)
+			usedBufferSize += 2
+		case destinationIPv4Address: //12
+			copy(buf[usedBufferSize:], key.destinationIPAddress.To4())
+			usedBufferSize += 4
+		case flowEndSysUpTime: //21
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], uint32(f.end.Sub(baseTime).Nanoseconds()/int64(time.Millisecond)))
+			usedBufferSize += 4
+		case flowStartSysUpTime: //22
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], uint32(f.start.Sub(baseTime).Nanoseconds()/int64(time.Millisecond)))
+			usedBufferSize += 4
+		case sourceIPv6Address: //27
+			copy(buf[usedBufferSize:], key.sourceIPAddress.To16())
+			usedBufferSize += 16
+		case destinationIPv6Address: //28
+			copy(buf[usedBufferSize:], key.destinationIPAddress.To16())
+			usedBufferSize += 16
+		case flowLabelIPv6: //31
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], key.flowLabeIPv6)
+			usedBufferSize += 4
+		case icmpTypeCodeIPv4, icmpTypeCodeIPv6: //32, 139
+			binary.BigEndian.PutUint16(buf[usedBufferSize:], key.icmpTypeCode)
+			usedBufferSize += 2
+		case fragmentIdentification: //54
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], key.fragmentIdentification)
+			usedBufferSize += 4
+		case sourceMacAddress, postSourceMacAddress: //56
+			copy(buf[usedBufferSize:], key.sourceMacAddress[0:6])
+			usedBufferSize += 6
+		case destinationMacAddress, postDestinationMacAddress: //57
+			copy(buf[usedBufferSize:], key.destinationMacAddress[0:6])
+			usedBufferSize += 6
+		case vlanId, postVlanId, dot1qVlanId, postDot1qVlanId: //58, 59, 243, 254
+			binary.BigEndian.PutUint16(buf[usedBufferSize:], key.vlanId)
+			usedBufferSize += 2
+		case ipVersion: //60
+			buf[usedBufferSize] = key.ipVersion
+			usedBufferSize += 1
+		case flowStartSeconds: //150
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], uint32(f.start.Unix()))
+			usedBufferSize += 4
+		case flowEndSeconds: //151
+			binary.BigEndian.PutUint32(buf[usedBufferSize:], uint32(f.end.Unix()))
+			usedBufferSize += 4
+		case flowStartMilliseconds: //152
+			binary.BigEndian.PutUint64(buf[usedBufferSize:], uint64(f.start.UnixNano()/int64(time.Millisecond)))
+			usedBufferSize += 8
+		case flowEndMilliseconds: //153
+			binary.BigEndian.PutUint64(buf[usedBufferSize:], uint64(f.end.UnixNano()/int64(time.Millisecond)))
+			usedBufferSize += 8
+		case icmpTypeIPv4, icmpTypeIPv6: //176, 178
+			buf[usedBufferSize] = uint8(key.icmpTypeCode >> 8)
+			usedBufferSize += 1
+		case icmpCodeIPv4, icmpCodeIPv6: //177, 179
+			buf[usedBufferSize] = uint8(key.icmpTypeCode & 0x00ff)
+			usedBufferSize += 1
+		}
+	}
+}
+
 func (f *Flow) SerializeNetflow5(buf []byte, baseTime time.Time) {
 	copy(buf[0:], f.key.sourceIPAddress.To4())
 	copy(buf[4:], f.key.destinationIPAddress.To4())
@@ -645,14 +776,14 @@ func (f *Flow) SerializeNetflow5(buf []byte, baseTime time.Time) {
 
 // goflowd flow parameters
 type Flow struct {
-	key              FlowKey
-	nonKey           FlowKey
-	tcpControlBits   uint16 // NetFlow version 1, 5, 7
-	flowEndReason    uint8
 	octetDeltaCount  uint64
 	packetDeltaCount uint64
 	start            time.Time
 	end              time.Time
+	key              FlowKey
+	nonKey           FlowKey
+	tcpControlBits   uint16 // NetFlow version 1, 5, 7
+	flowEndReason    uint8
 }
 
 func NewFlow(pp ParserParameters, cacheFields []CacheField, ci gopacket.CaptureInfo) Flow {
@@ -892,39 +1023,9 @@ func (cachedFlow *Flow) reset(newFlow Flow, flowEndReason uint8) {
 	}
 }
 
-func updateCacheData(newFlow Flow, cachedFlow *Flow, flowChan chan Flow, fcp CacheParameters) uint8 {
-	flowEndReason := uint8(0)
-	if !cachedFlow.key.Equal(newFlow.key) { // hash collision: flow is not same with same id
-		flowEndReason = flowEndReasonLackOfResources
-	} else if uint32(newFlow.end.Sub(cachedFlow.end).Seconds()) > fcp.idleTimeout {
-		flowEndReason = flowEndReasonIdleTimeout
-	} else { // update flow
-		cachedFlow.packetDeltaCount++
-		cachedFlow.octetDeltaCount += newFlow.octetDeltaCount
-		cachedFlow.end = newFlow.end
-		cachedFlow.tcpControlBits |= newFlow.tcpControlBits
-		if cachedFlow.tcpControlBits&tcpControlBitsFIN > 0 {
-			flowEndReason = flowEndReasonEndOfFlow
-		} else if uint32(cachedFlow.end.Sub(cachedFlow.start).Seconds()) > fcp.activeTimeout {
-			flowEndReason = flowEndReasonActiveTimeout
-		}
-	}
-	if flowEndReason > 0 {
-		flowChan <- *cachedFlow // expire
-		switch flowEndReason {
-		case flowEndReasonLackOfResources, flowEndReasonIdleTimeout:
-			*cachedFlow = newFlow
-		case flowEndReasonEndOfFlow, flowEndReasonActiveTimeout:
-			cachedFlow.packetDeltaCount = 0
-		}
-	}
-	return flowEndReason
-}
-
 // ParserParameters has parameters relating gopacket.NewDecodingLayerParser
 type ParserParameters struct {
 	parser  *gopacket.DecodingLayerParser
-	decoded []gopacket.LayerType
 	eth     *layers.Ethernet
 	dot1q   *layers.Dot1Q
 	ip4     *layers.IPv4
@@ -933,77 +1034,13 @@ type ParserParameters struct {
 	udp     *layers.UDP
 	icmp4   *layers.ICMPv4
 	icmp6   *layers.ICMPv6
+	decoded []gopacket.LayerType
 }
 
-type CacheData interface {
-	StoreFlow(flow Flow, fcp CacheParameters, destinations []Destination, destinationIndexes []int) uint8
-	ExpireAll(flowChan chan Flow, fcp CacheParameters)
-}
+type CacheData []Flow
 
-type SliceTypeCacheData []Flow
-type MapTypeCacheData map[uint32]Flow
-
-func NewCacheData(storeMap bool, maxFlows uint32) CacheData {
-	if storeMap {
-		return MapTypeCacheData(make(map[uint32]Flow, maxFlows))
-	}
-	return SliceTypeCacheData(make([]Flow, maxFlows))
-}
-
-func (sliceTypeCacheData SliceTypeCacheData) StoreFlow(flow Flow, fcp CacheParameters, destinations []Destination, destinationIndexes []int) uint8 {
-	flowEndReason := uint8(0)
-	flowHashId := flow.key.hash(fcp.maxFlows)
-	if sliceTypeCacheData[flowHashId].packetDeltaCount > 0 { //flow exists in sliceTypeCacheData
-		flowEndReason = (&sliceTypeCacheData[flowHashId]).update(flow, fcp)
-		if flowEndReason > 0 {
-			//expire
-			for i := 0; i < len(destinations); i++ {
-				(&destinations[i]).exportNetFlowV5(sliceTypeCacheData[flowHashId])
-			}
-			//reset
-			(&sliceTypeCacheData[flowHashId]).reset(flow, flowEndReason)
-		}
-	} else { //flow doesn't exist in sliceTypeCacheData
-		sliceTypeCacheData[flowHashId] = flow
-	}
-	return flowEndReason
-}
-func (sliceTypeCacheData SliceTypeCacheData) ExpireAll(flowChan chan Flow, fcp CacheParameters) {
-	for id := uint32(0); id < fcp.maxFlows; id++ {
-		if sliceTypeCacheData[id].packetDeltaCount > 0 {
-			flowChan <- sliceTypeCacheData[id]
-		}
-	}
-}
-
-func (mapTypeCacheData MapTypeCacheData) StoreFlow(flow Flow, fcp CacheParameters, destinations []Destination, destinationIndexes []int) uint8 {
-	flowEndReason := uint8(0)
-	flowHashId := flow.key.hash(fcp.maxFlows)
-	f, ok := mapTypeCacheData[flowHashId]
-	if ok { //flow exists in mapTypeCacheData
-		flowEndReason = (&f).update(flow, fcp)
-		if flowEndReason > 0 {
-			//expire
-			for _, v := range destinationIndexes {
-				(&destinations[v]).exportNetFlowV5(f)
-			}
-			//reset
-			(&f).reset(flow, flowEndReason)
-			if flowEndReason == flowEndReasonEndOfFlow || flowEndReason == flowEndReasonActiveTimeout {
-				delete(mapTypeCacheData, flowHashId)
-			}
-		}
-		mapTypeCacheData[flowHashId] = f // update
-	} else { //flow doesn't exist in mapTypeCacheData
-		mapTypeCacheData[flowHashId] = flow
-	}
-	return flowEndReason
-}
-func (mapTypeCacheData MapTypeCacheData) ExpireAll(flowChan chan Flow, fcp CacheParameters) {
-	for id, f := range mapTypeCacheData {
-		flowChan <- f
-		delete(mapTypeCacheData, id)
-	}
+func NewCacheData(maxFlows uint32) CacheData {
+	return CacheData(make([]Flow, maxFlows))
 }
 
 type CacheParameters struct {
@@ -1019,16 +1056,62 @@ type Cache struct {
 	Parameters           CacheParameters
 	Data                 CacheData
 	Fields               []CacheField
-	destinationIndexes   []int
+	destinationPointers  []*Destination
+	dataRecordSize       uint16
 }
 
-func (c Cache) String() string {
-	s := fmt.Sprintf("Index: %d, Name, %s ", c.Index, c.Name)
-	for i, v := range c.ExportingProcessName {
+func (cache Cache) serializeTemplateSet(version uint16) ([]byte, uint16, uint16) {
+	// Set Header: 4 bytes
+	// Template Record Header: 4 bytes
+	// Information Elements: 4 bytes x number of Information Elements
+	templateid := uint16(256 + cache.Index)
+	length := uint16(4 + 4 + len(cache.Fields)*4)
+	buffer := make([]byte, length)
+	if version == 10 {
+		binary.BigEndian.PutUint16(buffer[0:], 2) // Set ID = 2: Template Set for IPFIX
+	} else if version == 9 {
+		binary.BigEndian.PutUint16(buffer[0:], 0) // Set ID = 0: Template Set for NetFlow v9
+	}
+	binary.BigEndian.PutUint16(buffer[2:], length)
+	binary.BigEndian.PutUint16(buffer[4:], templateid)
+	binary.BigEndian.PutUint16(buffer[6:], uint16(len(cache.Fields)))
+	for i := 0; i < len(cache.Fields); i++ {
+		binary.BigEndian.PutUint16(buffer[8+i*4:], cache.Fields[i].IeId)
+		binary.BigEndian.PutUint16(buffer[10+i*4:], cache.Fields[i].IeLength)
+	}
+	return buffer, length, templateid
+}
+
+func (cache Cache) storeData(flow Flow, destinations []Destination, ps PacketSource) uint8 {
+	flowEndReason := uint8(0)
+	flowHashId := flow.key.hash(cache.Parameters.maxFlows)
+	if cache.Data[flowHashId].packetDeltaCount > 0 { //flow exists in CacheData
+		flowEndReason = (&cache.Data[flowHashId]).update(flow, cache.Parameters)
+		if flowEndReason > 0 { //expire
+			for i := 0; i < len(destinations); i++ {
+				switch destinations[i].Version {
+				case 5:
+					(&destinations[i]).exportNetFlowV5(cache.Data[flowHashId])
+				case 10:
+					(&destinations[i]).exportIPFIX(cache.Data[flowHashId], ps.observationDomainId, cache)
+				}
+			}
+			(&cache.Data[flowHashId]).reset(flow, flowEndReason) //reset
+		}
+	} else { //flow doesn't exist in CacheData
+		cache.Data[flowHashId] = flow
+	}
+	return flowEndReason
+
+}
+
+func (cache Cache) String() string {
+	s := fmt.Sprintf("Index: %d, Name, %s ", cache.Index, cache.Name)
+	for i, v := range cache.ExportingProcessName {
 		s += fmt.Sprintf("ExportingProcessName[%d]: %s ", i, v)
 	}
-	for i, v := range c.destinationIndexes {
-		s += fmt.Sprintf("destinationIndexes[%d]: %d ", i, v)
+	for i, v := range cache.destinationPointers {
+		s += fmt.Sprintf("destinationPointers[%d]: %p: %s ", i, v, (*v).String())
 	}
 	s += "\n"
 	return s
@@ -1036,23 +1119,19 @@ func (c Cache) String() string {
 
 func (cache *Cache) associateDestination(destinations []Destination) {
 	for _, epName := range cache.ExportingProcessName {
-		for _, v := range destinations {
-			if epName == v.ExportingProcessName {
-				cache.destinationIndexes = append(cache.destinationIndexes, v.Index)
+		for i := 0; i < len(destinations); i++ {
+			if epName == destinations[i].ExportingProcessName {
+				cache.destinationPointers = append(cache.destinationPointers, &destinations[i])
 			}
 		}
 	}
 }
 
 func (cache *IETFIpfixPsamp_Ipfix_Cache) NewCache(ianaIEsUint map[uint16]IERecord, ianaIEsString map[string]IERecord) Cache {
-	mapImpl := false
 	maxFlows := uint32(defaultMaxFlows)
 	activeTimeout := uint32(defaultFlowActiveTimeout)
 	idleTimeout := uint32(defaultFlowIdleTimeout)
 	cacheFields := []CacheField{}
-	if cache.MapImplementation != nil {
-		mapImpl = *cache.MapImplementation
-	}
 	if cache.TimeoutCache != nil && cache.TimeoutCache.CacheLayout != nil {
 		for _, field := range cache.TimeoutCache.CacheLayout.CacheField {
 			cacheField, err := NewCacheField(field.IeId, field.IeLength, field.IeName, bool(field.IsFlowKey), field.Name, ianaIEsUint, ianaIEsString)
@@ -1123,9 +1202,12 @@ func (cache *IETFIpfixPsamp_Ipfix_Cache) NewCache(ianaIEsUint map[uint16]IERecor
 	c.Parameters.maxFlows = maxFlows
 	c.Parameters.activeTimeout = activeTimeout
 	c.Parameters.idleTimeout = idleTimeout
-	c.Data = NewCacheData(mapImpl, maxFlows)
+	c.Data = NewCacheData(maxFlows)
 	c.Fields = cacheFields
-	c.destinationIndexes = []int{}
+	c.destinationPointers = []*Destination{}
+	for _, v := range c.Fields {
+		c.dataRecordSize += v.IeLength
+	}
 	return c
 }
 
@@ -1167,31 +1249,30 @@ const (
 )
 
 type Selector struct {
-	Index                      int
 	Name                       string
 	SelectionProcessName       string
 	CacheName                  string
-	Algorithm                  uint16
 	Interval                   uint32
 	Space                      uint32
+	TotalPacketCount           uint64
 	NextSampleStartPacketCount uint64
 	NextSampleEndPacketCount   uint64
 	NextSampleStartTime        time.Time
 	NextSampleEndTime          time.Time
-	TotalPacketCount           uint64
 	LastPacketTime             time.Time
-	CacheIndex                 int
+	cachePointer               *Cache
+	Algorithm                  uint16
 }
 
 func (selector Selector) String() string {
-	s := fmt.Sprintf("Index: %d, Name: %s, SelectorocessName: %s, Algorithm: %d, Interval: %d, Space: %d, CacheIndex: %d\n", selector.Index, selector.Name, selector.SelectionProcessName, selector.Algorithm, selector.Interval, selector.Space, selector.CacheIndex)
+	s := fmt.Sprintf("Name: %s, SelectorocessName: %s, Algorithm: %d, Interval: %d, Space: %d, cachePointer: %p\n", selector.Name, selector.SelectionProcessName, selector.Algorithm, selector.Interval, selector.Space, selector.cachePointer)
 	return s
 }
 
 func (selector *Selector) associateCache(caches []Cache) {
-	for _, v := range caches {
-		if selector.CacheName == v.Name {
-			selector.CacheIndex = v.Index
+	for i := 0; i < len(caches); i++ {
+		if selector.CacheName == caches[i].Name {
+			selector.cachePointer = &caches[i]
 			break
 		}
 	}
@@ -1283,28 +1364,25 @@ func (ipfix *IETFIpfixPsamp_Ipfix) NewSelectors() []Selector {
 		func(i int, j int) bool {
 			return selectors[i].Name < selectors[j].Name
 		})
-	for i, _ := range selectors {
-		selectors[i].Index = i
-	}
 	return selectors
 }
 
 type PacketSource struct {
-	Index                uint32
 	Name                 string
 	reader               PacketReader
 	file                 *os.File
 	SelectionProcessName []string
-	SelectorIndexes      []int
+	selectorPointers     []*Selector
+	observationDomainId  uint32
 }
 
 func (ps PacketSource) String() string {
-	s := fmt.Sprintf("Index: %d, Name, %s ", ps.Index, ps.Name)
+	s := fmt.Sprintf("Name, %s ", ps.Name)
 	for i, v := range ps.SelectionProcessName {
 		s += fmt.Sprintf("SelectionProcessName[%d]: %s ", i, v)
 	}
-	for i, v := range ps.SelectorIndexes {
-		s += fmt.Sprintf("SelectionIndexes[%d]: %d ", i, v)
+	for i, v := range ps.selectorPointers {
+		s += fmt.Sprintf("selectorPointers[%d]: %p: %s ", i, v, (*v).String())
 	}
 	s += "\n"
 	return s
@@ -1313,9 +1391,9 @@ func (ps PacketSource) String() string {
 
 func (packetSource *PacketSource) associateSlelector(selectors []Selector) {
 	for _, spName := range packetSource.SelectionProcessName {
-		for _, v := range selectors {
-			if spName == v.SelectionProcessName {
-				packetSource.SelectorIndexes = append(packetSource.SelectorIndexes, v.Index)
+		for i := 0; i < len(selectors); i++ {
+			if spName == selectors[i].SelectionProcessName {
+				packetSource.selectorPointers = append(packetSource.selectorPointers, &selectors[i])
 				break
 			}
 		}
@@ -1329,13 +1407,13 @@ func (packetSource PacketSource) processPacket(selectors []Selector, caches []Ca
 		return err
 	}
 	err = pp.parser.DecodeLayers(packetData, &pp.decoded)
-	for _, v := range packetSource.SelectorIndexes {
-		if !(&selectors[v]).selectPacket(ci.Timestamp) {
+	for i := 0; i < len(packetSource.selectorPointers); i++ {
+		if !packetSource.selectorPointers[i].selectPacket(ci.Timestamp) {
 			continue
 		}
-		cache := caches[selectors[v].CacheIndex]
+		cache := *packetSource.selectorPointers[i].cachePointer
 		flow := NewFlow(pp, cache.Fields, ci)
-		cache.Data.StoreFlow(flow, cache.Parameters, destinations, cache.destinationIndexes)
+		cache.storeData(flow, destinations, packetSource)
 	}
 	return nil
 }
@@ -1374,11 +1452,15 @@ func (op *IETFIpfixPsamp_Ipfix_ObservationPoint) NewPacketSource(ifName string, 
 	var packetSource PacketSource
 	var err error
 	packetSource.SelectionProcessName = spName
+	packetSource.selectorPointers = []*Selector{}
 	packetSource.reader, err = op.NewPacketReader(ifName, &packetSource.file)
 	if err != nil {
 		log.Fatal(err)
 	}
 	packetSource.Name = ifName
+	if op.ObservationDomainId != nil {
+		packetSource.observationDomainId = *op.ObservationDomainId
+	}
 	return packetSource
 }
 
@@ -1433,8 +1515,8 @@ type CacheField struct {
 	IeId               uint16
 	IeLength           uint16
 	IeEnterpriseNumber uint32
-	IsFlowKey          bool
 	FieldName          string // for sort
+	IsFlowKey          bool
 }
 
 // NewCacheFiled retruns new CacheField from common parameters IETFIpfixPsamp_Ipfix_Cache_ImmediateCache_*_CacheField struct
@@ -1485,7 +1567,6 @@ func NewCacheField(IeId *uint16, IeLength *uint16, IeName *string, IsFlowKey boo
 }
 
 type Destination struct {
-	Index                int
 	Name                 string
 	ExportingProcessName string
 	Protocol             string
@@ -1493,17 +1574,19 @@ type Destination struct {
 	IP                   net.IP
 	Port                 uint16
 	Version              uint16
-	BaseTime             time.Time
 	BufferSize           uint32
+	UsedBufferSize       uint32
+	DataSetStartPosition uint32
+	TotalFlowCount       uint32
+	BaseTime             time.Time
 	buffer               []byte
 	connection           net.Conn
-	UsedBufferSize       uint32
-	TotalFlowCount       uint32
+	TemplateId           uint16
 }
 
 func (d Destination) String() string {
-	s := fmt.Sprintf("Index: %d, Name: %s, ExportingProcess: %s, Protocol: %s, IPAddress: %s, IP: %s, Port: %d, Version:%d, BaseTime: %s, BufferSize: %d, UsedBufferSize: %s, TotalFlowCount:%s\n",
-		d.Index, d.Name, d.ExportingProcessName, d.Protocol, d.IPAddress, d.IP.String(), d.Port, d.Version, d.BaseTime.String(), d.BufferSize, d.UsedBufferSize, d.TotalFlowCount)
+	s := fmt.Sprintf("Name: %s, ExportingProcess: %s, Protocol: %s, IPAddress: %s, IP: %s, Port: %d, Version:%d, BaseTime: %s, BufferSize: %d, UsedBufferSize: %s, TotalFlowCount:%s\n",
+		d.Name, d.ExportingProcessName, d.Protocol, d.IPAddress, d.IP.String(), d.Port, d.Version, d.BaseTime.String(), d.BufferSize, d.UsedBufferSize, d.TotalFlowCount)
 	return s
 }
 
@@ -1574,9 +1657,6 @@ func (ipfix *IETFIpfixPsamp_Ipfix) NewDestinations() []Destination {
 		func(i int, j int) bool {
 			return destinations[i].Name < destinations[j].Name
 		})
-	for i, _ := range destinations {
-		destinations[i].Index = i
-	}
 	return destinations
 }
 
@@ -1644,6 +1724,7 @@ func (destination *Destination) exportNetFlowV5(flow Flow) {
 			destination.BaseTime)
 		destination.UsedBufferSize += netflow5RecordSize
 	}
+	// header update
 	if destination.UsedBufferSize+netflow5RecordSize > destination.BufferSize {
 		flowCount := uint16((destination.BufferSize - netflow5HeaderSize) / netflow5RecordSize)
 		destination.TotalFlowCount += uint32(flowCount)
@@ -1656,6 +1737,46 @@ func (destination *Destination) exportNetFlowV5(flow Flow) {
 		binary.BigEndian.PutUint32(destination.buffer[16:], destination.TotalFlowCount)
 		destination.connection.Write(destination.buffer[:destination.UsedBufferSize]) // UDP Send
 		destination.UsedBufferSize = netflow5HeaderSize
+	}
+}
+
+func (destination *Destination) exportIPFIX(flow Flow, odId uint32, cache Cache) {
+	if destination.UsedBufferSize == 0 &&
+		(destination.UsedBufferSize+IPFIXHeaderSize <= destination.BufferSize) {
+		// Header
+		binary.BigEndian.PutUint16(destination.buffer[0:], uint16(10)) // IPFIX Header constant value
+		// Length (2-4), Export Time (4-8) and Sequence (8-12) will be filled later
+		binary.BigEndian.PutUint32(destination.buffer[12:], uint32(odId))
+		destination.UsedBufferSize = IPFIXHeaderSize
+		// Template Set
+		templateSetBuffer, tempalteSetBufferSize, templateid := cache.serializeTemplateSet(destination.Version)
+		copy(destination.buffer[destination.UsedBufferSize:], templateSetBuffer)
+		destination.UsedBufferSize += uint32(tempalteSetBufferSize)
+		destination.DataSetStartPosition += destination.UsedBufferSize
+		// Data Set Header
+		binary.BigEndian.PutUint16(destination.buffer[destination.UsedBufferSize:],
+			uint16(templateid))
+		destination.UsedBufferSize += 4
+	}
+
+	if destination.UsedBufferSize+uint32(cache.dataRecordSize) <= destination.BufferSize {
+		flow.SerializeDataRecord(destination.buffer[destination.UsedBufferSize:],
+			destination.BaseTime, cache)
+		destination.UsedBufferSize += uint32(cache.dataRecordSize)
+	}
+	if destination.UsedBufferSize+uint32(cache.dataRecordSize) > destination.BufferSize {
+		dataSetLength := uint16(destination.UsedBufferSize - destination.DataSetStartPosition)
+		flowCount := (dataSetLength - 4) / cache.dataRecordSize
+		binary.BigEndian.PutUint16(destination.buffer[destination.DataSetStartPosition+2:],
+			dataSetLength)
+		// filling fields in IPFIX header
+		binary.BigEndian.PutUint16(destination.buffer[2:], uint16(destination.UsedBufferSize))
+		binary.BigEndian.PutUint32(destination.buffer[4:], uint32(flow.end.Unix()))
+		destination.TotalFlowCount += uint32(flowCount)
+		binary.BigEndian.PutUint32(destination.buffer[8:], destination.TotalFlowCount)
+		destination.connection.Write(destination.buffer[:destination.UsedBufferSize]) // UDP Send
+		destination.UsedBufferSize = 0                                                // reset
+		destination.DataSetStartPosition = 0                                          //reset
 	}
 }
 
