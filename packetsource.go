@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-    "log"
-    "os"
+	"log"
+	"os"
 )
 
 type PacketReader interface {
@@ -30,7 +30,7 @@ type ParserParameters struct {
 	ip6     *layers.IPv6
 	tcp     *layers.TCP
 	udp     *layers.UDP
-    sctp    *layers.SCTP
+	sctp    *layers.SCTP
 	icmp4   *layers.ICMPv4
 	icmp6   *layers.ICMPv6
 	decoded []gopacket.LayerType

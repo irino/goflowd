@@ -1,14 +1,14 @@
 package main
 
 import (
-    "fmt"
-    "net"
-    "sort"
-    "time"
+	"fmt"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
 	"log"
+	"net"
 	"os"
+	"sort"
+	"time"
 )
 
 const (
@@ -114,8 +114,8 @@ func (destination *IETFIpfixPsamp_Ipfix_ExportingProcess_Destination) NewDestina
 	dest.BufferSize = uint32(exportBufferSize)
 	dest.UsedBufferSize = 0
 	dest.Name = ""
-    dest.templateRefreshTimeout = 600
-    dest.optionTemplateRefreshTimeout = 600
+	dest.templateRefreshTimeout = 600
+	dest.optionTemplateRefreshTimeout = 600
 
 	if destination.Name != nil {
 		dest.Name = *destination.Name
@@ -151,18 +151,18 @@ func (destination *IETFIpfixPsamp_Ipfix_ExportingProcess_Destination) NewDestina
 		if destination.UdpExporter.IpfixVersion != nil {
 			dest.Version = *destination.UdpExporter.IpfixVersion
 		}
-        if destination.UdpExporter.TemplateRefreshTimeout != nil {
-            dest.templateRefreshTimeout = *destination.UdpExporter.TemplateRefreshTimeout
-        }
-        if destination.UdpExporter.OptionsTemplateRefreshTimeout != nil {
-            dest.optionTemplateRefreshTimeout = *destination.UdpExporter.OptionsTemplateRefreshTimeout
-        }
-        if destination.UdpExporter.TemplateRefreshPacket != nil {
-            dest.templateRefreshPacket = *destination.UdpExporter.TemplateRefreshPacket
-        }
-        if destination.UdpExporter.OptionsTemplateRefreshPacket != nil {
-            dest.optionTemplateRefreshPacket = *destination.UdpExporter.OptionsTemplateRefreshPacket
-        }
+		if destination.UdpExporter.TemplateRefreshTimeout != nil {
+			dest.templateRefreshTimeout = *destination.UdpExporter.TemplateRefreshTimeout
+		}
+		if destination.UdpExporter.OptionsTemplateRefreshTimeout != nil {
+			dest.optionTemplateRefreshTimeout = *destination.UdpExporter.OptionsTemplateRefreshTimeout
+		}
+		if destination.UdpExporter.TemplateRefreshPacket != nil {
+			dest.templateRefreshPacket = *destination.UdpExporter.TemplateRefreshPacket
+		}
+		if destination.UdpExporter.OptionsTemplateRefreshPacket != nil {
+			dest.optionTemplateRefreshPacket = *destination.UdpExporter.OptionsTemplateRefreshPacket
+		}
 	} else {
 		fmt.Errorf("Unsported export protocol\n")
 	}

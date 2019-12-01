@@ -1,11 +1,11 @@
 package main
 
 import (
-    "encoding/binary"
+	"encoding/binary"
 	"fmt"
-    "github.com/google/gopacket"
+	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-    "time"
+	"time"
 )
 
 // https://www.iana.org/assignments/ipfix/ipfix.xml 6:tcpControlBits
@@ -20,6 +20,7 @@ const (
 	tcpControlBitsCWR uint16 = 0x0080
 	tcpControlBitsNS  uint16 = 0x0100
 )
+
 // https://www.iana.org/assignments/ipfix/ipfix.xml 136:flowEndReason
 const (
 	flowEndReasonIdleTimeout     uint8 = 0x01
@@ -71,6 +72,17 @@ type Flow struct {
 	nonKey           FlowKey
 	tcpControlBits   uint16 // NetFlow version 1, 5, 7
 	flowEndReason    uint8
+}
+
+func (src Flow) Copy(dst *Flow) {
+	dst.octetDeltaCount = src.octetDeltaCount
+	dst.packetDeltaCount = src.packetDeltaCount
+	dst.start = src.start
+	dst.end = src.end
+	src.key.Copy(&dst.key)
+	src.nonKey.Copy(&dst.nonKey)
+	dst.tcpControlBits = src.tcpControlBits
+	dst.flowEndReason = src.flowEndReason
 }
 
 func NewFlow(pp ParserParameters, cacheFields []CacheField, ci gopacket.CaptureInfo) Flow {
@@ -128,8 +140,8 @@ func NewFlow(pp ParserParameters, cacheFields []CacheField, ci gopacket.CaptureI
 			} else if isUDP {
 				key.sourceTransportPort = uint16(pp.udp.SrcPort)
 			} else if isSCTP {
-                key.sourceTransportPort = uint16(pp.sctp.SrcPort)
-            }
+				key.sourceTransportPort = uint16(pp.sctp.SrcPort)
+			}
 		case sourceIPv4Address: //8
 			if isIPv4 {
 				key.sourceIPAddress = pp.ip4.SrcIP
@@ -244,48 +256,10 @@ func NewFlow(pp ParserParameters, cacheFields []CacheField, ci gopacket.CaptureI
 	return flow
 }
 
-// DecodeFromBytes decodes byte slice to pointer of Flow struct
-func (flow *Flow) DecodeFromBytes(packetData []byte, ci gopacket.CaptureInfo, pp ParserParameters) error {
-	flow.packetDeltaCount = 1
-	flow.octetDeltaCount = uint64(ci.Length)
-	flow.start, flow.end = ci.Timestamp, ci.Timestamp
-	for _, typ := range pp.decoded {
-		switch typ {
-		case layers.LayerTypeIPv4:
-			if pp.ip4.FragOffset > 0 {
-				return fmt.Errorf("Fragment")
-			}
-			flow.key.sourceIPAddress = pp.ip4.SrcIP
-			flow.key.destinationIPAddress = pp.ip4.DstIP
-			flow.key.protocolIdentifier = uint8(pp.ip4.Protocol)
-			flow.key.ipClassOfService = pp.ip4.TOS
-		case layers.LayerTypeIPv6:
-			flow.key.sourceIPAddress = pp.ip6.SrcIP
-			flow.key.destinationIPAddress = pp.ip6.DstIP
-			flow.key.protocolIdentifier = uint8(pp.ip6.NextHeader)
-			flow.key.ipClassOfService = pp.ip6.TrafficClass
-		case layers.LayerTypeTCP:
-			flow.key.sourceTransportPort = uint16(pp.tcp.SrcPort)
-			flow.key.destinationTransportPort = uint16(pp.tcp.DstPort)
-			flow.tcpControlBits = tcpFlag(pp.tcp)
-		case layers.LayerTypeUDP:
-			flow.key.sourceTransportPort = uint16(pp.udp.SrcPort)
-			flow.key.destinationTransportPort = uint16(pp.udp.DstPort)
-		case layers.LayerTypeICMPv4:
-			flow.key.sourceTransportPort = uint16(0)
-			flow.key.destinationTransportPort = uint16(pp.icmp4.TypeCode)
-		case layers.LayerTypeICMPv6:
-			flow.key.sourceTransportPort = uint16(0)
-			flow.key.destinationTransportPort = uint16(pp.icmp6.TypeCode)
-		}
-	}
-	return nil
-}
-
 func (f *Flow) String() string {
-	return fmt.Sprintf("%s, tcpFlag:%d, octets:%d, packet:%d, start:%s, end:%s",
-		f.key.String(), f.tcpControlBits, f.octetDeltaCount, f.packetDeltaCount,
-		f.start.String(), f.end.String())
+	return fmt.Sprintf("key:%s, nonKey:%s, tcpFlag:%d, octets:%d, packet:%d, start:%s, end:%s",
+		f.key.String(), f.nonKey.String(), f.tcpControlBits, f.octetDeltaCount,
+		f.packetDeltaCount, f.start.String(), f.end.String())
 }
 
 func (cachedFlow *Flow) update(newFlow Flow, fcp CacheParameters) uint8 {
@@ -310,7 +284,7 @@ func (cachedFlow *Flow) update(newFlow Flow, fcp CacheParameters) uint8 {
 func (cachedFlow *Flow) reset(newFlow Flow, flowEndReason uint8) {
 	switch flowEndReason {
 	case flowEndReasonLackOfResources, flowEndReasonIdleTimeout:
-		*cachedFlow = newFlow
+		newFlow.Copy(cachedFlow)
 	case flowEndReasonEndOfFlow, flowEndReasonActiveTimeout:
 		cachedFlow.packetDeltaCount = 0
 	}

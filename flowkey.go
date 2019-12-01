@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"net"
 )
-
 
 // caclcurate hash key of FlowKey
 func fnv32a(b []byte) uint32 {
@@ -32,6 +32,31 @@ type FlowKey struct {
 	ipVersion                uint8
 }
 
+func copyIP(ip net.IP) net.IP {
+	// To save space, try and only use 4 bytes
+	if x := ip.To4(); x != nil {
+		ip = x
+	}
+	dst := make(net.IP, len(ip))
+	copy(dst, ip)
+	return dst
+}
+func (src FlowKey) Copy(dst *FlowKey) {
+	dst.sourceIPAddress = copyIP(src.sourceIPAddress)
+	dst.destinationIPAddress = copyIP(src.destinationIPAddress)
+	dst.flowLabeIPv6 = src.flowLabeIPv6
+	dst.fragmentIdentification = src.fragmentIdentification
+	dst.sourceTransportPort = src.sourceTransportPort
+	dst.destinationTransportPort = src.destinationTransportPort
+	dst.icmpTypeCode = src.icmpTypeCode
+	dst.vlanId = src.vlanId
+	dst.sourceMacAddress = src.sourceMacAddress
+	dst.destinationMacAddress = src.destinationMacAddress
+	dst.protocolIdentifier = src.protocolIdentifier
+	dst.ipClassOfService = src.ipClassOfService
+	dst.ipVersion = src.ipVersion
+}
+
 // Serialize seriaizes (encodes) to byte array from FlowKey
 func (fk FlowKey) Serialize() []byte {
 	buf := make([]byte, 63)
@@ -50,16 +75,6 @@ func (fk FlowKey) Serialize() []byte {
 	buf[62] = fk.ipVersion
 	return buf
 }
-func (fk FlowKey) SerializeMin() []byte {
-	buf := make([]byte, binary.Size(fk))
-	copy(buf[0:], fk.sourceIPAddress)
-	copy(buf[16:], fk.destinationIPAddress)
-	binary.BigEndian.PutUint16(buf[32:], fk.sourceTransportPort)
-	binary.BigEndian.PutUint16(buf[34:], fk.destinationTransportPort)
-	buf[36] = fk.protocolIdentifier
-	buf[37] = fk.ipClassOfService
-	return buf
-}
 
 // hash provides hash number (uint32) from FlowKey
 func (fk FlowKey) hash(maxFlows uint32) uint32 {
@@ -75,18 +90,26 @@ func (fk FlowKey) hash(maxFlows uint32) uint32 {
 func (fk FlowKey) Equal(another FlowKey) bool {
 	if !fk.sourceIPAddress.Equal(another.sourceIPAddress) ||
 		!fk.destinationIPAddress.Equal(another.destinationIPAddress) ||
+		fk.flowLabeIPv6 != another.flowLabeIPv6 ||
+		fk.fragmentIdentification != another.flowLabeIPv6 ||
 		fk.sourceTransportPort != another.sourceTransportPort ||
 		fk.destinationTransportPort != another.destinationTransportPort ||
-		fk.protocolIdentifier != fk.protocolIdentifier ||
-		fk.ipClassOfService != fk.ipClassOfService {
+		fk.icmpTypeCode != another.icmpTypeCode ||
+		fk.vlanId != another.vlanId ||
+		!bytes.Equal(fk.sourceMacAddress[:], another.sourceMacAddress[:]) ||
+		!bytes.Equal(fk.destinationMacAddress[:], another.destinationMacAddress[:]) ||
+		fk.protocolIdentifier != another.protocolIdentifier ||
+		fk.ipClassOfService != another.ipClassOfService ||
+		fk.ipVersion != another.ipVersion {
 		return false
 	}
 	return true
 }
 
 func (fk FlowKey) String() string {
-	return fmt.Sprintf("sIP:%s, dIP:%s, sPort:%d, dPort:%d, Proto:%d, TOS:%d",
+	return fmt.Sprintf("sIP:%s, dIP:%s, flowlabel: %d, fragmentID: %d, sPort:%d, dPort:%d, icmp:%d, vlan:%d, Proto:%d, TOS:%d, ipver:%d",
 		fk.sourceIPAddress.String(), fk.destinationIPAddress.String(),
-		fk.sourceTransportPort, fk.destinationTransportPort, fk.protocolIdentifier,
-		fk.ipClassOfService)
+		fk.flowLabeIPv6, fk.fragmentIdentification,
+		fk.sourceTransportPort, fk.destinationTransportPort, fk.icmpTypeCode, fk.vlanId,
+		fk.protocolIdentifier, fk.ipClassOfService, fk.ipVersion)
 }

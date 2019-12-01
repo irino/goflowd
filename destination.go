@@ -2,39 +2,39 @@ package main
 
 import (
 	"encoding/binary"
-    "fmt"
+	"fmt"
 	"net"
-    "time"
+	"time"
 )
 
 const ( // goflowd parameters
-	netflow5HeaderSize       = 24
-	netflow5RecordSize       = 48
-	IPFIXHeaderSize          = 16
+	netflow5HeaderSize = 24
+	netflow5RecordSize = 48
+	IPFIXHeaderSize    = 16
 )
 
 type Destination struct {
-	Name                 string
-	ExportingProcessName string
-	Protocol             string
-	IPAddress            string
-	IP                   net.IP
-	Port                 uint16
-	Version              uint16
-	BufferSize           uint32
-	UsedBufferSize       uint32
-	DataSetStartPosition uint32
-	TotalFlowCount       uint32
-	BaseTime             time.Time
-	buffer               []byte
-	connection           net.Conn
-	TemplateId           uint16
-    templateRefreshTimeout uint32
-    optionTemplateRefreshTimeout uint32
-    templateRefreshPacket uint32
-    optionTemplateRefreshPacket uint32
-    lastTemplateRefreshTime time.Time
-    lastOptionTemplateRefreshTime time.Time
+	Name                          string
+	ExportingProcessName          string
+	Protocol                      string
+	IPAddress                     string
+	IP                            net.IP
+	Port                          uint16
+	Version                       uint16
+	BufferSize                    uint32
+	UsedBufferSize                uint32
+	DataSetStartPosition          uint32
+	TotalFlowCount                uint32
+	BaseTime                      time.Time
+	buffer                        []byte
+	connection                    net.Conn
+	TemplateId                    uint16
+	templateRefreshTimeout        uint32
+	optionTemplateRefreshTimeout  uint32
+	templateRefreshPacket         uint32
+	optionTemplateRefreshPacket   uint32
+	lastTemplateRefreshTime       time.Time
+	lastOptionTemplateRefreshTime time.Time
 }
 
 func (d Destination) String() string {
@@ -42,7 +42,6 @@ func (d Destination) String() string {
 		d.Name, d.ExportingProcessName, d.Protocol, d.IPAddress, d.IP.String(), d.Port, d.Version, d.BaseTime.String(), d.BufferSize, d.UsedBufferSize, d.TotalFlowCount)
 	return s
 }
-
 
 func (destination *Destination) exportNetFlowV5(flow Flow) {
 	if destination.UsedBufferSize == 0 &&

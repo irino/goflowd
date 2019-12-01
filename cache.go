@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/xml"
 	"encoding/binary"
+	"encoding/xml"
 	"fmt"
 	"io"
-    "log"
-    "os"
+	"log"
+	"os"
 )
 
 type CacheData []Flow
@@ -111,10 +111,9 @@ func (cache Cache) storeData(flow Flow, destinations []Destination, ps PacketSou
 			(&cache.Data[flowHashId]).reset(flow, flowEndReason) //reset
 		}
 	} else { //flow doesn't exist in CacheData
-		cache.Data[flowHashId] = flow
+		flow.Copy(&cache.Data[flowHashId])
 	}
 	return flowEndReason
-
 }
 
 func (cache Cache) String() string {

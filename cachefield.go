@@ -1,9 +1,8 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 )
-
 
 // cache field is a type to store real entity for cacheField configuration
 type CacheField struct {

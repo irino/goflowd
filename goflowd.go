@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-    "io/ioutil"
+	"io/ioutil"
 	"log"
 )
 
