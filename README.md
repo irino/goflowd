@@ -1,6 +1,6 @@
 # goflowd
 
-## Sumary
+## Summary
 goflowd is netflow probe like [softflowd](https://github.com/irino/softflowd).
 It is written by golang.  goflowd uses
 [ietf-ipfix-psamp.yang](https://github.com/YangModels/yang/blob/master/standard/ietf/RFC/ietf-ipfix-psamp%402012-09-05.yang)
