@@ -11,6 +11,11 @@ const (
 	TimeBasedSampling
 )
 
+type filterMatch struct {
+	enable bool
+	key    FlowKey
+}
+
 type Selector struct {
 	Name                       string
 	SelectionProcessName       string
@@ -25,6 +30,7 @@ type Selector struct {
 	LastPacketTime             time.Time
 	cachePointer               *Cache
 	Algorithm                  uint16
+	filterMatch                filterMatch
 }
 
 func (selector Selector) String() string {
@@ -39,6 +45,22 @@ func (selector *Selector) associateCache(caches []Cache) {
 			break
 		}
 	}
+}
+
+func (s *Selector) filterMatchPacket(flow Flow) bool {
+	if s.Algorithm == SelectAll {
+		return true
+	}
+	if s.filterMatch.enable {
+		if s.filterMatch.key.ipVersion > 0 {
+			if s.filterMatch.key.ipVersion == flow.key.ipVersion {
+				return true
+			} else {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (s *Selector) selectPacket(packetTime time.Time) bool {

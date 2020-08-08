@@ -202,7 +202,7 @@ const (
 	fragmentFlags
 	octetDeltaSumOfSquares
 	octetTotalSumOfSquares
-	mplsTopLabelTTL
+	mplsTopLabelTTL // 200
 	mplsLabelStackLength
 	mplsLabelStackDepth
 	mplsTopLabelExp
@@ -252,7 +252,7 @@ const (
 	metroEvcId
 	metroEvcType
 	pseudoWireId
-	pseudoWireType
+	pseudoWireType // 250
 	pseudoWireControlWord
 	ingressPhysicalInterface
 	egressPhysicalInterface
@@ -262,7 +262,7 @@ const (
 	postIpPrecedence
 	collectionTimeMilliseconds
 	exportSctpStreamId
-	maxExportSeconds
+	maxExportSeconds // 260
 	maxFlowEndSeconds
 	messageMD5Checksum
 	messageScope
@@ -272,7 +272,7 @@ const (
 	sessionScope
 	maxFlowEndMicroseconds
 	maxFlowEndMilliseconds
-	maxFlowEndNanoseconds
+	maxFlowEndNanoseconds // 270
 	minFlowStartMicroseconds
 	minFlowStartMilliseconds
 	minFlowStartNanoseconds
@@ -282,7 +282,7 @@ const (
 	observationPointType
 	newConnectionDeltaCount
 	connectionSumDurationSeconds
-	connectionTransactionId
+	connectionTransactionId // 280
 	postNATSourceIPv6Address
 	postNATDestinationIPv6Address
 	natPoolId
@@ -292,7 +292,7 @@ const (
 	informationElementIndex
 	p2pTechnology
 	tunnelTechnology
-	encryptedTechnology
+	encryptedTechnology // 290
 	basicList
 	subTemplateList
 	subTemplateMultiList
@@ -302,7 +302,7 @@ const (
 	natType
 	initiatorPackets
 	responderPackets
-	observationDomainName
+	observationDomainName // 300
 	selectionSequenceId
 	selectorId
 	informationElementId
@@ -312,7 +312,7 @@ const (
 	samplingTimeInterval
 	samplingTimeSpace
 	samplingSize
-	samplingPopulation
+	samplingPopulation // 310
 	samplingProbability
 	dataLinkFrameSize
 	ipHeaderPacketSection
@@ -322,7 +322,7 @@ const (
 	mplsPayloadPacketSection
 	selectorIdTotalPktsObserved
 	selectorIdTotalPktsSelected
-	absoluteError
+	absoluteError // 320
 	relativeError
 	observationTimeSeconds
 	observationTimeMilliseconds
@@ -332,7 +332,7 @@ const (
 	hashIPPayloadOffset
 	hashIPPayloadSize
 	hashOutputRangeMin
-	hashOutputRangeMax
+	hashOutputRangeMax // 330
 	hashSelectedRangeMin
 	hashSelectedRangeMax
 	hashDigestOutput
@@ -342,7 +342,7 @@ const (
 	lowerCILimit
 	confidenceLevel
 	informationElementDataType
-	informationElementDescription
+	informationElementDescription // 340
 	informationElementName
 	informationElementRangeBegin
 	informationElementRangeEnd
@@ -352,7 +352,7 @@ const (
 	virtualStationInterfaceId
 	virtualStationInterfaceName
 	virtualStationUUID
-	virtualStationName
+	virtualStationName // 350
 	layer2SegmentId
 	layer2OctetDeltaCount
 	layer2OctetTotalCount
@@ -362,7 +362,7 @@ const (
 	egressUnicastPacketTotalCount
 	egressBroadcastPacketTotalCount
 	monitoringIntervalStartMilliSeconds
-	monitoringIntervalEndMilliSeconds
+	monitoringIntervalEndMilliSeconds // 360
 	portRangeStart
 	portRangeEnd
 	portRangeStepSize
@@ -372,7 +372,7 @@ const (
 	wtpMacAddress
 	ingressInterfaceType
 	egressInterfaceType
-	rtpSequenceNumber
+	rtpSequenceNumber // 370
 	userName
 	applicationCategoryName
 	applicationSubCategoryName
@@ -382,7 +382,7 @@ const (
 	originalFlowsCompleted
 	distinctCountOfSourceIPAddress
 	distinctCountOfDestinationIPAddress
-	distinctCountOfSourceIPv4Address
+	distinctCountOfSourceIPv4Address // 380
 	distinctCountOfDestinationIPv4Address
 	distinctCountOfSourceIPv6Address
 	distinctCountOfDestinationIPv6Address
@@ -392,7 +392,7 @@ const (
 	rfc3550JitterNanoseconds
 	dot1qDEI
 	dot1qCustomerDEI
-	flowSelectorAlgorithm
+	flowSelectorAlgorithm // 390
 	flowSelectedOctetDeltaCount
 	flowSelectedPacketDeltaCount
 	flowSelectedFlowDeltaCount
@@ -402,7 +402,7 @@ const (
 	samplingFlowSpacing
 	flowSamplingTimeInterval
 	flowSamplingTimeSpacing
-	hashFlowDomain
+	hashFlowDomain // 400
 	transportOctetDeltaCount
 	transportPacketDeltaCount
 	originalExporterIPv4Address
@@ -412,15 +412,17 @@ const (
 	ignoredDataRecordTotalCount
 	dataLinkFrameType
 	sectionOffset
-	sectionExportedOctets
+	sectionExportedOctets // 410
 	dot1qServiceInstanceTag
 	dot1qServiceInstanceId
 	dot1qServiceInstancePriority
 	dot1qCustomerSourceMacAddress
-	dot1qCustomerDestinationMacAddress
+	dot1qCustomerDestinationMacAddress // 415
+	_                                  // 416
 	postLayer2OctetDeltaCount
 	postMCastLayer2OctetDeltaCount
-	postLayer2OctetTotalCount
+	_                         // 419
+	postLayer2OctetTotalCount // 420
 	postMCastLayer2OctetTotalCount
 	minimumLayer2TotalLength
 	maximumLayer2TotalLength
@@ -491,5 +493,515 @@ const (
 	bgpDestinationExtendedCommunityList
 	bgpLargeCommunity
 	bgpSourceLargeCommunityList
-	bgpDestinationLargeCommunityList
+	bgpDestinationLargeCommunityList // 491
 )
+
+var ieNames = [492]string{
+	"",
+	"octetDeltaCount",
+	"packetDeltaCount",
+	"deltaFlowCount",
+	"protocolIdentifier",
+	"ipClassOfService",
+	"tcpControlBits",
+	"sourceTransportPort",
+	"sourceIPv4Address",
+	"sourceIPv4PrefixLength",
+	"ingressInterface",
+	"destinationTransportPort",
+	"destinationIPv4Address",
+	"destinationIPv4PrefixLength",
+	"egressInterface",
+	"ipNextHopIPv4Address",
+	"bgpSourceAsNumber",
+	"bgpDestinationAsNumber",
+	"bgpNextHopIPv4Address",
+	"postMCastPacketDeltaCount",
+	"postMCastOctetDeltaCount",
+	"flowEndSysUpTime",
+	"flowStartSysUpTime",
+	"postOctetDeltaCount",
+	"postPacketDeltaCount",
+	"minimumIpTotalLength",
+	"maximumIpTotalLength",
+	"sourceIPv6Address",
+	"destinationIPv6Address",
+	"sourceIPv6PrefixLength",
+	"destinationIPv6PrefixLength",
+	"flowLabelIPv6",
+	"icmpTypeCodeIPv4",
+	"igmpType",
+	"samplingInterval",
+	"samplingAlgorithm",
+	"flowActiveTimeout",
+	"flowIdleTimeout",
+	"engineType",
+	"engineId",
+	"exportedOctetTotalCount",
+	"exportedMessageTotalCount",
+	"exportedFlowRecordTotalCount",
+	"ipv4RouterSc",
+	"sourceIPv4Prefix",
+	"destinationIPv4Prefix",
+	"mplsTopLabelType",
+	"mplsTopLabelIPv4Address",
+	"samplerId",
+	"samplerMode",
+	"samplerRandomInterval",
+	"classId",
+	"minimumTTL",
+	"maximumTTL",
+	"fragmentIdentification",
+	"postIpClassOfService",
+	"sourceMacAddress",
+	"postDestinationMacAddress",
+	"vlanId",
+	"postVlanId",
+	"ipVersion",
+	"flowDirection",
+	"ipNextHopIPv6Address",
+	"bgpNextHopIPv6Address",
+	"ipv6ExtensionHeaders", //64
+	"",
+	"",
+	"",
+	"",
+	"",
+	"mplsTopLabelStackSection", //70
+	"mplsLabelStackSection2",
+	"mplsLabelStackSection3",
+	"mplsLabelStackSection4",
+	"mplsLabelStackSection5",
+	"mplsLabelStackSection6",
+	"mplsLabelStackSection7",
+	"mplsLabelStackSection8",
+	"mplsLabelStackSection9",
+	"mplsLabelStackSection10",
+	"destinationMacAddress",
+	"postSourceMacAddress",
+	"interfaceName",
+	"interfaceDescription",
+	"samplerName",
+	"octetTotalCount",
+	"packetTotalCount",
+	"flagsAndSamplerId",
+	"fragmentOffset",
+	"forwardingStatus",
+	"mplsVpnRouteDistinguisher",
+	"mplsTopLabelPrefixLength",
+	"srcTrafficIndex",
+	"dstTrafficIndex",
+	"applicationDescription",
+	"applicationId",
+	"applicationName",
+	"",
+	"postIpDiffServCodePoint", //98
+	"multicastReplicationFactor",
+	"className",
+	"classificationEngineId",
+	"layer2packetSectionOffset",
+	"layer2packetSectionSize",
+	"layer2packetSectionData", //104
+	"",
+	"_",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"",
+	"bgpNextAdjacentAsNumber", //128
+	"bgpPrevAdjacentAsNumber",
+	"exporterIPv4Address",
+	"exporterIPv6Address",
+	"droppedOctetDeltaCount",
+	"droppedPacketDeltaCount",
+	"droppedOctetTotalCount",
+	"droppedPacketTotalCount",
+	"flowEndReason",
+	"commonPropertiesId",
+	"observationPointId",
+	"icmpTypeCodeIPv6",
+	"mplsTopLabelIPv6Address",
+	"lineCardId",
+	"portId",
+	"meteringProcessId",
+	"exportingProcessId",
+	"templateId",
+	"wlanChannelId",
+	"wlanSSID",
+	"flowId",
+	"observationDomainId",
+	"flowStartSeconds",
+	"flowEndSeconds",
+	"flowStartMilliseconds",
+	"flowEndMilliseconds",
+	"flowStartMicroseconds",
+	"flowEndMicroseconds",
+	"flowStartNanoseconds",
+	"flowEndNanoseconds",
+	"flowStartDeltaMicroseconds",
+	"flowEndDeltaMicroseconds",
+	"systemInitTimeMilliseconds",
+	"flowDurationMilliseconds",
+	"flowDurationMicroseconds",
+	"observedFlowTotalCount",
+	"ignoredPacketTotalCount",
+	"ignoredOctetTotalCount",
+	"notSentFlowTotalCount",
+	"notSentPacketTotalCount",
+	"notSentOctetTotalCount",
+	"destinationIPv6Prefix",
+	"sourceIPv6Prefix",
+	"postOctetTotalCount",
+	"postPacketTotalCount",
+	"flowKeyIndicator",
+	"postMCastPacketTotalCount",
+	"postMCastOctetTotalCount",
+	"icmpTypeIPv4",
+	"icmpCodeIPv4",
+	"icmpTypeIPv6",
+	"icmpCodeIPv6",
+	"udpSourcePort",
+	"udpDestinationPort",
+	"tcpSourcePort",
+	"tcpDestinationPort",
+	"tcpSequenceNumber",
+	"tcpAcknowledgementNumber",
+	"tcpWindowSize",
+	"tcpUrgentPointer",
+	"tcpHeaderLength",
+	"ipHeaderLength",
+	"totalLengthIPv4",
+	"payloadLengthIPv6",
+	"ipTTL",
+	"nextHeaderIPv6",
+	"mplsPayloadLength",
+	"ipDiffServCodePoint",
+	"ipPrecedence",
+	"fragmentFlags",
+	"octetDeltaSumOfSquares",
+	"octetTotalSumOfSquares",
+	"mplsTopLabelTTL",
+	"mplsLabelStackLength",
+	"mplsLabelStackDepth",
+	"mplsTopLabelExp",
+	"ipPayloadLength",
+	"udpMessageLength",
+	"isMulticast",
+	"ipv4IHL",
+	"ipv4Options",
+	"tcpOptions",
+	"paddingOctets",
+	"collectorIPv4Address",
+	"collectorIPv6Address",
+	"exportInterface",
+	"exportProtocolVersion",
+	"exportTransportProtocol",
+	"collectorTransportPort",
+	"exporterTransportPort",
+	"tcpSynTotalCount",
+	"tcpFinTotalCount",
+	"tcpRstTotalCount",
+	"tcpPshTotalCount",
+	"tcpAckTotalCount",
+	"tcpUrgTotalCount",
+	"ipTotalLength",
+	"postNATSourceIPv4Address",
+	"postNATDestinationIPv4Address",
+	"postNAPTSourceTransportPort",
+	"postNAPTDestinationTransportPort",
+	"natOriginatingAddressRealm",
+	"natEvent",
+	"initiatorOctets",
+	"responderOctets",
+	"firewallEvent",
+	"ingressVRFID",
+	"egressVRFID",
+	"VRFname",
+	"postMplsTopLabelExp",
+	"tcpWindowScale",
+	"biflowDirection",
+	"ethernetHeaderLength",
+	"ethernetPayloadLength",
+	"ethernetTotalLength",
+	"dot1qVlanId",
+	"dot1qPriority",
+	"dot1qCustomerVlanId",
+	"dot1qCustomerPriority",
+	"metroEvcId",
+	"metroEvcType",
+	"pseudoWireId",
+	"pseudoWireType",
+	"pseudoWireControlWord",
+	"ingressPhysicalInterface",
+	"egressPhysicalInterface",
+	"postDot1qVlanId",
+	"postDot1qCustomerVlanId",
+	"ethernetType",
+	"postIpPrecedence",
+	"collectionTimeMilliseconds",
+	"exportSctpStreamId",
+	"maxExportSeconds",
+	"maxFlowEndSeconds",
+	"messageMD5Checksum",
+	"messageScope",
+	"minExportSeconds",
+	"minFlowStartSeconds",
+	"opaqueOctets",
+	"sessionScope",
+	"maxFlowEndMicroseconds",
+	"maxFlowEndMilliseconds",
+	"maxFlowEndNanoseconds",
+	"minFlowStartMicroseconds",
+	"minFlowStartMilliseconds",
+	"minFlowStartNanoseconds",
+	"collectorCertificate",
+	"exporterCertificate",
+	"dataRecordsReliability",
+	"observationPointType",
+	"newConnectionDeltaCount",
+	"connectionSumDurationSeconds",
+	"connectionTransactionId",
+	"postNATSourceIPv6Address",
+	"postNATDestinationIPv6Address",
+	"natPoolId",
+	"natPoolName",
+	"anonymizationFlags",
+	"anonymizationTechnique",
+	"informationElementIndex",
+	"p2pTechnology",
+	"tunnelTechnology",
+	"encryptedTechnology",
+	"basicList",
+	"subTemplateList",
+	"subTemplateMultiList",
+	"bgpValidityState",
+	"IPSecSPI",
+	"greKey",
+	"natType",
+	"initiatorPackets",
+	"responderPackets",
+	"observationDomainName",
+	"selectionSequenceId",
+	"selectorId",
+	"informationElementId",
+	"selectorAlgorithm",
+	"samplingPacketInterval",
+	"samplingPacketSpace",
+	"samplingTimeInterval",
+	"samplingTimeSpace",
+	"samplingSize",
+	"samplingPopulation",
+	"samplingProbability",
+	"dataLinkFrameSize",
+	"ipHeaderPacketSection",
+	"ipPayloadPacketSection",
+	"dataLinkFrameSection",
+	"mplsLabelStackSection",
+	"mplsPayloadPacketSection",
+	"selectorIdTotalPktsObserved",
+	"selectorIdTotalPktsSelected",
+	"absoluteError",
+	"relativeError",
+	"observationTimeSeconds",
+	"observationTimeMilliseconds",
+	"observationTimeMicroseconds",
+	"observationTimeNanoseconds",
+	"digestHashValue",
+	"hashIPPayloadOffset",
+	"hashIPPayloadSize",
+	"hashOutputRangeMin",
+	"hashOutputRangeMax",
+	"hashSelectedRangeMin",
+	"hashSelectedRangeMax",
+	"hashDigestOutput",
+	"hashInitialiserValue",
+	"selectorName",
+	"upperCILimit",
+	"lowerCILimit",
+	"confidenceLevel",
+	"informationElementDataType",
+	"informationElementDescription",
+	"informationElementName",
+	"informationElementRangeBegin",
+	"informationElementRangeEnd",
+	"informationElementSemantics",
+	"informationElementUnits",
+	"privateEnterpriseNumber",
+	"virtualStationInterfaceId",
+	"virtualStationInterfaceName",
+	"virtualStationUUID",
+	"virtualStationName",
+	"layer2SegmentId",
+	"layer2OctetDeltaCount",
+	"layer2OctetTotalCount",
+	"ingressUnicastPacketTotalCount",
+	"ingressMulticastPacketTotalCount",
+	"ingressBroadcastPacketTotalCount",
+	"egressUnicastPacketTotalCount",
+	"egressBroadcastPacketTotalCount",
+	"monitoringIntervalStartMilliSeconds",
+	"monitoringIntervalEndMilliSeconds",
+	"portRangeStart",
+	"portRangeEnd",
+	"portRangeStepSize",
+	"portRangeNumPorts",
+	"staMacAddress",
+	"staIPv4Address",
+	"wtpMacAddress",
+	"ingressInterfaceType",
+	"egressInterfaceType",
+	"rtpSequenceNumber",
+	"userName",
+	"applicationCategoryName",
+	"applicationSubCategoryName",
+	"applicationGroupName",
+	"originalFlowsPresent",
+	"originalFlowsInitiated",
+	"originalFlowsCompleted",
+	"distinctCountOfSourceIPAddress",
+	"distinctCountOfDestinationIPAddress",
+	"distinctCountOfSourceIPv4Address",
+	"distinctCountOfDestinationIPv4Address",
+	"distinctCountOfSourceIPv6Address",
+	"distinctCountOfDestinationIPv6Address",
+	"valueDistributionMethod",
+	"rfc3550JitterMilliseconds",
+	"rfc3550JitterMicroseconds",
+	"rfc3550JitterNanoseconds",
+	"dot1qDEI",
+	"dot1qCustomerDEI",
+	"flowSelectorAlgorithm",
+	"flowSelectedOctetDeltaCount",
+	"flowSelectedPacketDeltaCount",
+	"flowSelectedFlowDeltaCount",
+	"selectorIDTotalFlowsObserved",
+	"selectorIDTotalFlowsSelected",
+	"samplingFlowInterval",
+	"samplingFlowSpacing",
+	"flowSamplingTimeInterval",
+	"flowSamplingTimeSpacing",
+	"hashFlowDomain",
+	"transportOctetDeltaCount",
+	"transportPacketDeltaCount",
+	"originalExporterIPv4Address",
+	"originalExporterIPv6Address",
+	"originalObservationDomainId",
+	"intermediateProcessId",
+	"ignoredDataRecordTotalCount",
+	"dataLinkFrameType",
+	"sectionOffset",
+	"sectionExportedOctets",
+	"dot1qServiceInstanceTag",
+	"dot1qServiceInstanceId",
+	"dot1qServiceInstancePriority",
+	"dot1qCustomerSourceMacAddress",
+	"dot1qCustomerDestinationMacAddress",
+	"",
+	"postLayer2OctetDeltaCount",
+	"postMCastLayer2OctetDeltaCount",
+	"",
+	"postLayer2OctetTotalCount",
+	"postMCastLayer2OctetTotalCount",
+	"minimumLayer2TotalLength",
+	"maximumLayer2TotalLength",
+	"droppedLayer2OctetDeltaCount",
+	"droppedLayer2OctetTotalCount",
+	"ignoredLayer2OctetTotalCount",
+	"notSentLayer2OctetTotalCount",
+	"layer2OctetDeltaSumOfSquares",
+	"layer2OctetTotalSumOfSquares",
+	"layer2FrameDeltaCount",
+	"layer2FrameTotalCount",
+	"pseudoWireDestinationIPv4Address",
+	"ignoredLayer2FrameTotalCount",
+	"mibObjectValueInteger",
+	"mibObjectValueOctetString",
+	"mibObjectValueOID",
+	"mibObjectValueBits",
+	"mibObjectValueIPAddress",
+	"mibObjectValueCounter",
+	"mibObjectValueGauge",
+	"mibObjectValueTimeTicks",
+	"mibObjectValueUnsigned",
+	"mibObjectValueTable",
+	"mibObjectValueRow",
+	"mibObjectIdentifier",
+	"mibSubIdentifier",
+	"mibIndexIndicator",
+	"mibCaptureTimeSemantics",
+	"mibContextEngineID",
+	"mibContextName",
+	"mibObjectName",
+	"mibObjectDescription",
+	"mibObjectSyntax",
+	"mibModuleName",
+	"mobileIMSI",
+	"mobileMSISDN",
+	"httpStatusCode",
+	"sourceTransportPortsLimit",
+	"httpRequestMethod",
+	"httpRequestHost",
+	"httpRequestTarget",
+	"httpMessageVersion",
+	"natInstanceID",
+	"internalAddressRealm",
+	"externalAddressRealm",
+	"natQuotaExceededEvent",
+	"natThresholdEvent",
+	"httpUserAgent",
+	"httpContentType",
+	"httpReasonPhrase",
+	"maxSessionEntries",
+	"maxBIBEntries",
+	"maxEntriesPerUser",
+	"maxSubscribers",
+	"maxFragmentsPendingReassembly",
+	"addressPoolHighThreshold",
+	"addressPoolLowThreshold",
+	"addressPortMappingHighThreshold",
+	"addressPortMappingLowThreshold",
+	"addressPortMappingPerUserHighThreshold",
+	"globalAddressMappingHighThreshold",
+	"vpnIdentifier",
+	"bgpCommunity",
+	"bgpSourceCommunityList",
+	"bgpDestinationCommunityList",
+	"bgpExtendedCommunity",
+	"bgpSourceExtendedCommunityList",
+	"bgpDestinationExtendedCommunityList",
+	"bgpLargeCommunity",
+	"bgpSourceLargeCommunityList",
+	"bgpDestinationLargeCommunityList",
+}
+
+func ieNameToId(name string) uint16 {
+	id := uint16(0)
+	for i, n := range ieNames {
+		if n == name {
+			id = uint16(i)
+			break
+		}
+	}
+	return id
+}
+
+func ieIdtoName(id int) string {
+	return ieNames[id]
+}

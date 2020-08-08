@@ -16,6 +16,7 @@ type PacketSource struct {
 	Name                 string
 	reader               PacketReader
 	file                 *os.File
+	selectorsMaps        map[string][]*Selector
 	SelectionProcessName []string
 	selectorPointers     []*Selector
 	observationDomainId  uint32

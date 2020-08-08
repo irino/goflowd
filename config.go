@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -198,6 +199,10 @@ func (op *IETFIpfixPsamp_Ipfix_ObservationPoint) NewPacketReader(pcapSource stri
 func (op *IETFIpfixPsamp_Ipfix_ObservationPoint) NewPacketSource(ifName string, spName []string) PacketSource {
 	var packetSource PacketSource
 	var err error
+	packetSource.selectorsMaps = make(map[string][]*Selector, len(spName))
+	for _, v := range spName {
+		packetSource.selectorsMaps[v] = []*Selector{}
+	}
 	packetSource.SelectionProcessName = spName
 	packetSource.selectorPointers = []*Selector{}
 	packetSource.reader, err = op.NewPacketReader(ifName, &packetSource.file)
@@ -209,6 +214,46 @@ func (op *IETFIpfixPsamp_Ipfix_ObservationPoint) NewPacketSource(ifName string, 
 		packetSource.observationDomainId = *op.ObservationDomainId
 	}
 	return packetSource
+}
+
+func (selector *IETFIpfixPsamp_Ipfix_SelectionProcess_Selector) NewFilterMatch() filterMatch {
+	var fm filterMatch
+	ieId := uint16(0)
+	if selector.FilterMatch != nil && selector.FilterMatch.Value != nil {
+		fm.enable = true
+	}
+	if selector.FilterMatch.IeId == nil && selector.FilterMatch.IeName != nil {
+		ieId = ieNameToId(*selector.FilterMatch.IeName)
+	} else if selector.FilterMatch.IeId != nil {
+		ieId = *selector.FilterMatch.IeId
+	}
+	switch ieId {
+	case protocolIdentifier:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.protocolIdentifier = uint8(value)
+		}
+	case ipClassOfService:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.ipClassOfService = uint8(value)
+		}
+	case sourceTransportPort:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.sourceTransportPort = uint16(value)
+		}
+	case sourceIPv4Address:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.sourceTransportPort = uint16(value)
+		}
+	case destinationTransportPort:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.destinationTransportPort = uint16(value)
+		}
+	case ipVersion:
+		if value, err := strconv.Atoi(*selector.FilterMatch.Value); err == nil {
+			fm.key.ipVersion = uint8(value)
+		}
+	}
+	return fm
 }
 
 func (selector *IETFIpfixPsamp_Ipfix_SelectionProcess_Selector) NewSelector(spName string, cacheName string) Selector {
@@ -245,6 +290,9 @@ func (selector *IETFIpfixPsamp_Ipfix_SelectionProcess_Selector) NewSelector(spNa
 		} else {
 			s.Space = 0
 		}
+	}
+	if selector.FilterMatch != nil {
+		s.filterMatch = selector.NewFilterMatch()
 	}
 	return s
 }
